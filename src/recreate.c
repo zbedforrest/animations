@@ -2,6 +2,13 @@
 #include <stdlib.h> // For malloc/free
 #include <stdio.h>  // For printf
 
+typedef enum {
+    CHANNEL_R,
+    CHANNEL_G,
+    CHANNEL_B,
+    CHANNEL_ORIGINAL
+} ActiveChannel;
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -24,14 +31,10 @@ int main(int argc, char *argv[])
     // --- Manual Crop Logic ---
     Color *pixels = LoadImageColors(original);
     int left = original.width, right = 0, top = original.height, bottom = 0;
-
-    for (int y = 0; y < original.height; y++)
-    {
-        for (int x = 0; x < original.width; x++)
-        {
+    for (int y = 0; y < original.height; y++) {
+        for (int x = 0; x < original.width; x++) {
             Color p = pixels[y * original.width + x];
-            if (p.r > 10 || p.g > 10 || p.b > 10)
-            {
+            if (p.r > 10 || p.g > 10 || p.b > 10) {
                 if (x < left)   left = x;
                 if (x > right)  right = x;
                 if (y < top)    top = y;
@@ -39,34 +42,41 @@ int main(int argc, char *argv[])
             }
         }
     }
-    UnloadImageColors(pixels);
-
-    if (left < right && top < bottom)
-    {
+    if (left < right && top < bottom) {
         Rectangle cropRec = { (float)left, (float)top, (float)(right - left + 1), (float)(bottom - top + 1) };
         ImageCrop(&original, cropRec);
+        pixels = LoadImageColors(original); // Reload pixels from cropped image
     }
     // --- End Manual Crop ---
 
-    pixels = LoadImageColors(original);
+    // --- Prepare all three color channels ---
     Color *r_pixels = (Color *)malloc(original.width * original.height * sizeof(Color));
-    for (int i = 0; i < original.width * original.height; i++)
-    {
+    Color *g_pixels = (Color *)malloc(original.width * original.height * sizeof(Color));
+    Color *b_pixels = (Color *)malloc(original.width * original.height * sizeof(Color));
+    for (int i = 0; i < original.width * original.height; i++) {
         r_pixels[i] = (Color){ pixels[i].r, 0, 0, 255 };
+        g_pixels[i] = (Color){ 0, pixels[i].g, 0, 255 };
+        b_pixels[i] = (Color){ 0, 0, pixels[i].b, 255 };
     }
     UnloadImageColors(pixels);
 
     Image r_img = { .data = r_pixels, .width = original.width, .height = original.height, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
+    Image g_img = { .data = g_pixels, .width = original.width, .height = original.height, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
+    Image b_img = { .data = b_pixels, .width = original.width, .height = original.height, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
+
     Image r_img_display = ImageCopy(r_img);
+    Image g_img_display = ImageCopy(g_img);
+    Image b_img_display = ImageCopy(b_img);
+    Image original_display = ImageCopy(original);
 
     // --- Setup Window and Display ---
     const int screenWidth = 1400;
     const int screenHeight = 800;
-    InitWindow(screenWidth, screenHeight, "Recreate - Red Channel Analyzer");
+    InitWindow(screenWidth, screenHeight, "Recreate - Color Channel Analyzer");
 
     const int renderAreaWidth = 1000;
     const int renderAreaHeight = 800;
-    float aspectRatio = (float)r_img_display.width / (float)r_img_display.height;
+    float aspectRatio = (float)original.width / (float)original.height;
     int fitWidth, fitHeight;
     if ((renderAreaWidth / aspectRatio) <= renderAreaHeight) {
         fitWidth = renderAreaWidth;
@@ -79,12 +89,26 @@ int main(int argc, char *argv[])
     int finalWidth = (int)(fitWidth * 0.8f);
     int finalHeight = (int)(fitHeight * 0.8f);
     ImageResize(&r_img_display, finalWidth, finalHeight);
-    Texture2D texture = LoadTextureFromImage(r_img_display);
+    ImageResize(&g_img_display, finalWidth, finalHeight);
+    ImageResize(&b_img_display, finalWidth, finalHeight);
+    ImageResize(&original_display, finalWidth, finalHeight);
+
+    Texture2D tex_r = LoadTextureFromImage(r_img_display);
+    Texture2D tex_g = LoadTextureFromImage(g_img_display);
+    Texture2D tex_b = LoadTextureFromImage(b_img_display);
+    Texture2D tex_original = LoadTextureFromImage(original_display);
 
     int posX = 0;
     int posY = (screenHeight - finalHeight) / 2;
 
-    Rectangle plotArea = { (float)finalWidth + 50, (float)posY, (float)screenWidth - finalWidth - 100, (float)finalHeight };
+    Rectangle plotArea = { (float)finalWidth + 50, (float)posY, (float)screenWidth - finalWidth - 50, (float)finalHeight };
+
+    // --- UI Elements ---
+    Rectangle rButton = { 10, 10, 40, 30 };
+    Rectangle gButton = { 60, 10, 40, 30 };
+    Rectangle bButton = { 110, 10, 40, 30 };
+    Rectangle originalButton = { 160, 10, 80, 30 };
+    ActiveChannel currentChannel = CHANNEL_R;
 
     SetTargetFPS(60);
 
@@ -94,53 +118,118 @@ int main(int argc, char *argv[])
         Vector2 mousePosition = GetMousePosition();
         Rectangle imageBounds = { (float)posX, (float)posY, (float)finalWidth, (float)finalHeight };
 
+        // --- Update (Input Handling) ---
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            if (CheckCollisionPointRec(mousePosition, rButton)) currentChannel = CHANNEL_R;
+            else if (CheckCollisionPointRec(mousePosition, gButton)) currentChannel = CHANNEL_G;
+            else if (CheckCollisionPointRec(mousePosition, bButton)) currentChannel = CHANNEL_B;
+            else if (CheckCollisionPointRec(mousePosition, originalButton)) currentChannel = CHANNEL_ORIGINAL;
+        }
+
+        // --- Draw ---
         BeginDrawing();
             ClearBackground(BLACK);
-            DrawTexture(texture, posX, posY, WHITE);
+
+            // Draw active texture
+            switch (currentChannel) {
+                case CHANNEL_R: DrawTexture(tex_r, posX, posY, WHITE); break;
+                case CHANNEL_G: DrawTexture(tex_g, posX, posY, WHITE); break;
+                case CHANNEL_B: DrawTexture(tex_b, posX, posY, WHITE); break;
+                case CHANNEL_ORIGINAL: DrawTexture(tex_original, posX, posY, WHITE); break;
+            }
 
             // Draw Plot Area
             DrawRectangleLinesEx(plotArea, 1, WHITE);
             DrawText("X-Coordinate", plotArea.x + plotArea.width/2 - 50, plotArea.y + plotArea.height + 10, 20, WHITE);
-            DrawText("R-Value", plotArea.x - 80, plotArea.y + plotArea.height/2 - 10, 20, WHITE);
-
+            DrawText("Value", plotArea.x - 60, plotArea.y + plotArea.height/2 - 10, 20, WHITE);
 
             if (CheckCollisionPointRec(mousePosition, imageBounds))
             {
-                // Draw the horizontal green bar (1px thick)
                 DrawRectangle(posX, (int)mousePosition.y - 1, finalWidth, 1, GREEN);
 
                 // --- Plotting Logic ---
-                float yScale = (float)r_img.height / (float)finalHeight;
+                float yScale = (float)original.height / (float)finalHeight;
                 int sourceY = (int)((mousePosition.y - posY) * yScale);
 
-                if (sourceY >= 0 && sourceY < r_img.height)
-                {
-                    Vector2 prevPoint = { 0 };
-                    for (int x = 0; x < r_img.width; x++)
-                    {
-                        unsigned char redValue = ((Color *)r_img.data)[sourceY * r_img.width + x].r;
-                        
-                        Vector2 currentPoint = {
-                            plotArea.x + ((float)x / (r_img.width - 1)) * plotArea.width,
-                            plotArea.y + plotArea.height - (((float)redValue / 255.0f) * plotArea.height)
-                        };
+                if (sourceY >= 0 && sourceY < original.height) {
+                    if (currentChannel == CHANNEL_ORIGINAL) {
+                        Vector2 prevR = {0}, prevG = {0}, prevB = {0};
+                        Color *sourceData = (Color *)original.data;
+                        for (int x = 0; x < original.width; x++) {
+                            Color p = sourceData[sourceY * original.width + x];
+                            float plotX = plotArea.x + ((float)x / (original.width - 1)) * plotArea.width;
+                            
+                            Vector2 curR = { plotX, plotArea.y + plotArea.height - (((float)p.r / 255.0f) * plotArea.height) };
+                            Vector2 curG = { plotX, plotArea.y + plotArea.height - (((float)p.g / 255.0f) * plotArea.height) };
+                            Vector2 curB = { plotX, plotArea.y + plotArea.height - (((float)p.b / 255.0f) * plotArea.height) };
 
-                        if (x > 0) DrawLineV(prevPoint, currentPoint, RED);
-                        prevPoint = currentPoint;
+                            if (x > 0) {
+                                DrawLineV(prevR, curR, RED);
+                                DrawLineV(prevG, curG, GREEN);
+                                DrawLineV(prevB, curB, BLUE);
+                            }
+                            prevR = curR; prevG = curG; prevB = curB;
+                        }
+                    } else {
+                        Vector2 prevPoint = { 0 };
+                        Color plotColor = RED;
+                        Color *sourceData = NULL;
+                        switch (currentChannel) {
+                            case CHANNEL_R: sourceData = (Color *)r_img.data; plotColor = RED; break;
+                            case CHANNEL_G: sourceData = (Color *)g_img.data; plotColor = GREEN; break;
+                            case CHANNEL_B: sourceData = (Color *)b_img.data; plotColor = BLUE; break;
+                            case CHANNEL_ORIGINAL: break; // Should not happen
+                        }
+
+                        for (int x = 0; x < original.width; x++) {
+                            unsigned char value = 0;
+                            switch (currentChannel) {
+                                case CHANNEL_R: value = sourceData[sourceY * original.width + x].r; break;
+                                case CHANNEL_G: value = sourceData[sourceY * original.width + x].g; break;
+                                case CHANNEL_B: value = sourceData[sourceY * original.width + x].b; break;
+                                case CHANNEL_ORIGINAL: break; // Should not happen
+                            }
+                            
+                            Vector2 currentPoint = {
+                                plotArea.x + ((float)x / (original.width - 1)) * plotArea.width,
+                                plotArea.y + plotArea.height - (((float)value / 255.0f) * plotArea.height)
+                            };
+
+                            if (x > 0) DrawLineV(prevPoint, currentPoint, plotColor);
+                            prevPoint = currentPoint;
+                        }
                     }
                 }
             }
+
+            // Draw Buttons
+            DrawRectangleRec(rButton, (currentChannel == CHANNEL_R) ? MAROON : DARKGRAY);
+            DrawText("R", rButton.x + 15, rButton.y + 5, 20, WHITE);
+            DrawRectangleRec(gButton, (currentChannel == CHANNEL_G) ? DARKGREEN : DARKGRAY);
+            DrawText("G", gButton.x + 15, gButton.y + 5, 20, WHITE);
+            DrawRectangleRec(bButton, (currentChannel == CHANNEL_B) ? DARKBLUE : DARKGRAY);
+            DrawText("B", bButton.x + 15, bButton.y + 5, 20, WHITE);
+            DrawRectangleRec(originalButton, (currentChannel == CHANNEL_ORIGINAL) ? PURPLE : DARKGRAY);
+            DrawText("Orig", originalButton.x + 15, originalButton.y + 5, 20, WHITE);
 
         EndDrawing();
     }
 
     // --- Cleanup ---
-    UnloadTexture(texture);
+    UnloadTexture(tex_r);
+    UnloadTexture(tex_g);
+    UnloadTexture(tex_b);
+    UnloadTexture(tex_original);
     CloseWindow();
 
     UnloadImage(original);
     UnloadImage(r_img);
+    UnloadImage(g_img);
+    UnloadImage(b_img);
     UnloadImage(r_img_display);
+    UnloadImage(g_img_display);
+    UnloadImage(b_img_display);
+    UnloadImage(original_display);
 
     return 0;
 }

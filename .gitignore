@@ -5,3 +5,4 @@
 
 # Ignore downloaded libraries
 /raylib/
+/bin/

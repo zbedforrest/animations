@@ -60,6 +60,12 @@ typedef struct {
     double leftKeyDownTime;
     double rightKeyDownTime;
 
+    // Animation State
+    bool animating;
+    float t;
+    float dt;
+    Rectangle animateButton;
+
 } AppState;
 
 #endif // GLOBALS_H

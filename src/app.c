@@ -86,6 +86,9 @@ void InitApp(AppState *state, const char *filename)
     state->recreationImage = GenImageColor(state->original.width, state->original.height, BLACK);
     state->z_offset = 0;
     state->stripe_height = 400; // Default stripe height
+    state->animating = true;
+    state->t = 0.0f;
+    state->dt = 1.0f;
 }
 
 void RunApp(AppState *state)
@@ -114,8 +117,8 @@ void CleanupApp(AppState *state)
     UnloadTexture(state->tex_b);
     UnloadTexture(state->tex_original);
     UnloadImage(state->original);
-    UnloadImage(state->r_img);
-    UnloadImage(state->g_img);
-    UnloadImage(state->b_img);
+    free(state->r_img.data);
+    free(state->g_img.data);
+    free(state->b_img.data);
     UnloadImage(state->recreationImage);
 }

@@ -12,7 +12,7 @@ ASSETDIR = assets
 
 # Project names
 TARGET_SHADER = main
-TARGET_TOOL = image_tool
+TARGET_TOOL = image_tooll
 
 # Source files
 TOOL_SOURCES = $(filter-out $(SRCDIR)/shader_main.c, $(wildcard $(SRCDIR)/*.c))

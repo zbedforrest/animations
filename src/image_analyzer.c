@@ -1,120 +1,99 @@
 #include "raylib.h"
 #include <stdlib.h> // For malloc/free
+#include <stdio.h>  // For printf, sprintf
+
+void process_image(const char *filename);
 
 int main(void)
 {
-    // Initialization
-    //--------------------------------------------------------------------------------------
-    Image target = LoadImage("TARGET.png");
-    float aspectRatio = (float)target.width / (float)target.height;
+    process_image("TARGET.png");
+    process_image("TARGET2.png");
 
-    // Define thumbnail width and calculate height
+    return 0;
+}
+
+void process_image(const char *filename)
+{
+    printf("Processing %s...\n", filename);
+
+    Image original = LoadImage(filename);
+    if (original.data == NULL)
+    {
+        printf("Failed to load image: %s\n", filename);
+        return;
+    }
+
+    float aspectRatio = (float)original.width / (float)original.height;
+
+    // Define image sizes and spacing
     int thumbWidth = 350;
     int thumbHeight = (int)(thumbWidth / aspectRatio);
-
-    // Define display image width and calculate height
     int displayWidth = 700;
     int displayHeight = (int)(displayWidth / aspectRatio);
-
-    // Define spacing
     int spacing = 20;
 
-    // Calculate screen dimensions
-    const int screenWidth = (thumbWidth * 3) + (spacing * 4);
-    const int screenHeight = displayHeight + thumbHeight + (spacing * 3);
+    // Calculate final canvas dimensions
+    int canvasWidth = (thumbWidth * 3) + (spacing * 4);
+    int canvasHeight = displayHeight + thumbHeight + (spacing * 3);
 
-    InitWindow(screenWidth, screenHeight, "Image Color Bands");
+    // Create the canvas to draw on
+    Image canvas = GenImageColor(canvasWidth, canvasHeight, RAYWHITE);
 
-    // Create a copy for thumbnails and resize it
-    Image thumb = ImageCopy(target);
-    ImageResize(&thumb, thumbWidth, thumbHeight);
+    // Create and resize a copy for the large display image
+    Image displayImg = ImageCopy(original);
+    ImageResize(&displayImg, displayWidth, displayHeight);
 
-    // Resize the main display image
-    ImageResize(&target, displayWidth, displayHeight);
+    // Create and resize a copy for the thumbnails
+    Image thumbImg = ImageCopy(original);
+    ImageResize(&thumbImg, thumbWidth, thumbHeight);
 
-    // Get pixel data from the thumbnail image
-    Color *pixels = LoadImageColors(thumb);
+    // Get pixel data from the thumbnail image for channel separation
+    Color *pixels = LoadImageColors(thumbImg);
+    Color *r_pixels = (Color *)malloc(thumbImg.width * thumbImg.height * sizeof(Color));
+    Color *g_pixels = (Color *)malloc(thumbImg.width * thumbImg.height * sizeof(Color));
+    Color *b_pixels = (Color *)malloc(thumbImg.width * thumbImg.height * sizeof(Color));
 
-    // Create pixel data for color bands
-    Color *r_pixels = (Color *)malloc(thumb.width * thumb.height * sizeof(Color));
-    Color *g_pixels = (Color *)malloc(thumb.width * thumb.height * sizeof(Color));
-    Color *b_pixels = (Color *)malloc(thumb.width * thumb.height * sizeof(Color));
-
-    // Separate color bands
-    for (int i = 0; i < thumb.width * thumb.height; i++)
+    for (int i = 0; i < thumbImg.width * thumbImg.height; i++)
     {
         r_pixels[i] = (Color){ pixels[i].r, 0, 0, 255 };
         g_pixels[i] = (Color){ 0, pixels[i].g, 0, 255 };
         b_pixels[i] = (Color){ 0, 0, pixels[i].b, 255 };
     }
 
-    // Create images from pixel data
-    Image r_img = { .data = r_pixels, .width = thumb.width, .height = thumb.height, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
-    Image g_img = { .data = g_pixels, .width = thumb.width, .height = thumb.height, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
-    Image b_img = { .data = b_pixels, .width = thumb.width, .height = thumb.height, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
+    Image r_img = { .data = r_pixels, .width = thumbWidth, .height = thumbHeight, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
+    Image g_img = { .data = g_pixels, .width = thumbWidth, .height = thumbHeight, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
+    Image b_img = { .data = b_pixels, .width = thumbWidth, .height = thumbHeight, .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, .mipmaps = 1 };
 
-    // Create textures
-    Texture2D tex_original = LoadTextureFromImage(target);
-    Texture2D tex_r = LoadTextureFromImage(r_img);
-    Texture2D tex_g = LoadTextureFromImage(g_img);
-    Texture2D tex_b = LoadTextureFromImage(b_img);
+    // --- Draw the layout onto the canvas ---
 
-    // Unload image data
+    // Draw original image (centered top)
+    int displayX = (canvasWidth / 2) - (displayWidth / 2);
+    ImageDraw(&canvas, displayImg, (Rectangle){0, 0, displayWidth, displayHeight}, (Rectangle){displayX, spacing, displayWidth, displayHeight}, WHITE);
+
+    // Draw RGB channels (bottom row)
+    int thumbY = displayHeight + (spacing * 2);
+    int r_x = spacing;
+    int g_x = spacing * 2 + thumbWidth;
+    int b_x = spacing * 3 + thumbWidth * 2;
+
+    ImageDraw(&canvas, r_img, (Rectangle){0, 0, thumbWidth, thumbHeight}, (Rectangle){r_x, thumbY, thumbWidth, thumbHeight}, WHITE);
+    ImageDraw(&canvas, g_img, (Rectangle){0, 0, thumbWidth, thumbHeight}, (Rectangle){g_x, thumbY, thumbWidth, thumbHeight}, WHITE);
+    ImageDraw(&canvas, b_img, (Rectangle){0, 0, thumbWidth, thumbHeight}, (Rectangle){b_x, thumbY, thumbWidth, thumbHeight}, WHITE);
+
+    // Export the final composite image
+    char out_filename[100];
+    sprintf(out_filename, "analysis_output/%s_analysis.png", filename);
+    ExportImage(canvas, out_filename);
+
+    printf("Saved composite analysis to %s\n", out_filename);
+
+    // --- Cleanup ---
+    UnloadImage(original);
+    UnloadImage(canvas);
+    UnloadImage(displayImg);
+    UnloadImage(thumbImg);
     UnloadImageColors(pixels);
-    UnloadImage(target);
-    UnloadImage(thumb);
-
-    // Free the memory allocated for the color channels
     free(r_pixels);
     free(g_pixels);
     free(b_pixels);
-
-    SetTargetFPS(60);
-    //--------------------------------------------------------------------------------------
-
-    // Main game loop
-    while (!WindowShouldClose())
-    {
-        // Draw
-        //----------------------------------------------------------------------------------
-        BeginDrawing();
-
-            ClearBackground(RAYWHITE);
-
-            // Draw original image centered on the top row
-            int original_x = (screenWidth / 2) - (tex_original.width / 2);
-            int original_y = spacing;
-            DrawText("Original", original_x, original_y - 15, 20, BLACK);
-            DrawTexture(tex_original, original_x, original_y, WHITE);
-
-            // Draw RGB channels on the bottom row
-            int thumb_y = original_y + tex_original.height + spacing;
-            int r_x = spacing;
-            int g_x = spacing * 2 + thumbWidth;
-            int b_x = spacing * 3 + thumbWidth * 2;
-
-            DrawText("Red Channel", r_x, thumb_y - 15, 20, RED);
-            DrawTexture(tex_r, r_x, thumb_y, WHITE);
-
-            DrawText("Green Channel", g_x, thumb_y - 15, 20, GREEN);
-            DrawTexture(tex_g, g_x, thumb_y, WHITE);
-
-            DrawText("Blue Channel", b_x, thumb_y - 15, 20, BLUE);
-            DrawTexture(tex_b, b_x, thumb_y, WHITE);
-
-        EndDrawing();
-        //----------------------------------------------------------------------------------
-    }
-
-    // De-Initialization
-    //--------------------------------------------------------------------------------------
-    UnloadTexture(tex_original);
-    UnloadTexture(tex_r);
-    UnloadTexture(tex_g);
-    UnloadTexture(tex_b);
-
-    CloseWindow();
-    //--------------------------------------------------------------------------------------
-
-    return 0;
 }

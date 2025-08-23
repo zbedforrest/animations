@@ -6,16 +6,19 @@ CC = gcc
 # Project names
 TARGET_MAIN = main
 TARGET_ANALYZER = image_analyzer
+TARGET_RECREATE = recreate
 
 # Source files
 SRCDIR = src
 SRC_MAIN = $(SRCDIR)/main.c
 SRC_ANALYZER = $(SRCDIR)/image_analyzer.c
+SRC_RECREATE = $(SRCDIR)/recreate.c
 
 # Object files
 OBJDIR = build
 OBJ_MAIN = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC_MAIN))
 OBJ_ANALYZER = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC_ANALYZER))
+OBJ_RECREATE = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC_RECREATE))
 
 # Flags
 CFLAGS = -Wall -Wextra -I$(SRCDIR) `pkg-config --cflags raylib`
@@ -34,6 +37,12 @@ analyzer: $(OBJDIR)/$(TARGET_ANALYZER)
 $(OBJDIR)/$(TARGET_ANALYZER): $(OBJ_ANALYZER)
 	$(CC) $(OBJ_ANALYZER) -o $@ $(LDFLAGS)
 
+# Rule to build the recreate executable
+recreate: $(OBJDIR)/$(TARGET_RECREATE)
+
+$(OBJDIR)/$(TARGET_RECREATE): $(OBJ_RECREATE)
+	$(CC) $(OBJ_RECREATE) -o $@ $(LDFLAGS)
+
 # Rule to compile source files into object files
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(OBJDIR)
@@ -47,6 +56,10 @@ run: all
 run_analyzer: analyzer
 	./$(OBJDIR)/$(TARGET_ANALYZER) TARGET*.png
 
+# Run the recreate program
+run_recreate: recreate
+	./$(OBJDIR)/$(TARGET_RECREATE) TARGET.png
+
 # Clean up build files
 clean:
 	rm -rf $(OBJDIR)/*
@@ -56,4 +69,4 @@ watch:
 	@echo "Watching for changes in src/... Press Ctrl+C to stop."
 	@find $(SRCDIR)/main.c $(SRCDIR)/glow_ring.fs | entr -n -s 'make all && (pkill -f ./build/main || true) && (./build/main &)'
 
-.PHONY: all run clean watch analyzer run_analyzer
+.PHONY: all run clean watch analyzer run_analyzer recreate run_recreate

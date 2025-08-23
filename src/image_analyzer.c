@@ -4,10 +4,18 @@
 
 void process_image(const char *filename);
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    process_image("TARGET.png");
-    process_image("TARGET2.png");
+    if (argc < 2)
+    {
+        printf("Usage: %s [image files...]\n", argv[0]);
+        return 1;
+    }
+
+    for (int i = 1; i < argc; i++)
+    {
+        process_image(argv[i]);
+    }
 
     return 0;
 }

@@ -45,7 +45,7 @@ run: all
 
 # Run the analyzer
 run_analyzer: analyzer
-	./$(OBJDIR)/$(TARGET_ANALYZER)
+	./$(OBJDIR)/$(TARGET_ANALYZER) TARGET*.png
 
 # Clean up build files
 clean:

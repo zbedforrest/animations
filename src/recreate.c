@@ -103,12 +103,22 @@ int main(int argc, char *argv[])
 
     Rectangle plotArea = { (float)finalWidth + 50, (float)posY, (float)screenWidth - finalWidth - 50, (float)finalHeight };
 
-    // --- UI Elements ---
+    // --- UI Elements & State ---
     Rectangle rButton = { 10, 10, 40, 30 };
     Rectangle gButton = { 60, 10, 40, 30 };
     Rectangle bButton = { 110, 10, 40, 30 };
     Rectangle originalButton = { 160, 10, 80, 30 };
-    ActiveChannel currentChannel = CHANNEL_R;
+    ActiveChannel currentChannel = CHANNEL_ORIGINAL;
+
+    bool manualControl = false;
+    float barY = 0;
+    Vector2 lastMousePosition = { -1.0f, -1.0f };
+
+    // Key hold state
+    double upKeyDownTime = 0.0;
+    double downKeyDownTime = 0.0;
+    const double HOLD_THRESHOLD = 0.5;
+    const float MOVE_SPEED = 20.0f;
 
     SetTargetFPS(60);
 
@@ -119,6 +129,52 @@ int main(int argc, char *argv[])
         Rectangle imageBounds = { (float)posX, (float)posY, (float)finalWidth, (float)finalHeight };
 
         // --- Update (Input Handling) ---
+        if (mousePosition.x != lastMousePosition.x || mousePosition.y != lastMousePosition.y) {
+            manualControl = false;
+            upKeyDownTime = 0.0;
+            downKeyDownTime = 0.0;
+        }
+        lastMousePosition = mousePosition;
+
+        // Handle UP key
+        if (IsKeyPressed(KEY_UP)) {
+            manualControl = true;
+            barY -= 1;
+            upKeyDownTime = GetTime();
+        }
+        if (IsKeyDown(KEY_UP) && upKeyDownTime > 0.0) {
+            if ((GetTime() - upKeyDownTime) > HOLD_THRESHOLD) {
+                barY -= MOVE_SPEED * GetFrameTime();
+            }
+        }
+        if (IsKeyReleased(KEY_UP)) {
+            upKeyDownTime = 0.0;
+        }
+
+        // Handle DOWN key
+        if (IsKeyPressed(KEY_DOWN)) {
+            manualControl = true;
+            barY += 1;
+            downKeyDownTime = GetTime();
+        }
+        if (IsKeyDown(KEY_DOWN) && downKeyDownTime > 0.0) {
+            if ((GetTime() - downKeyDownTime) > HOLD_THRESHOLD) {
+                barY += MOVE_SPEED * GetFrameTime();
+            }
+        }
+        if (IsKeyReleased(KEY_DOWN)) {
+            downKeyDownTime = 0.0;
+        }
+
+
+        if (!manualControl) {
+            barY = mousePosition.y;
+        }
+
+        // Clamp barY to image bounds
+        if (barY < posY) barY = posY;
+        if (barY > posY + finalHeight - 1) barY = posY + finalHeight - 1;
+
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             if (CheckCollisionPointRec(mousePosition, rButton)) currentChannel = CHANNEL_R;
             else if (CheckCollisionPointRec(mousePosition, gButton)) currentChannel = CHANNEL_G;
@@ -143,13 +199,13 @@ int main(int argc, char *argv[])
             DrawText("X-Coordinate", plotArea.x + plotArea.width/2 - 50, plotArea.y + plotArea.height + 10, 20, WHITE);
             DrawText("Value", plotArea.x - 60, plotArea.y + plotArea.height/2 - 10, 20, WHITE);
 
-            if (CheckCollisionPointRec(mousePosition, imageBounds))
+            if (CheckCollisionPointRec(mousePosition, imageBounds) || manualControl)
             {
-                DrawRectangle(posX, (int)mousePosition.y - 1, finalWidth, 1, GREEN);
+                DrawRectangle(posX, (int)barY - 1, finalWidth, 1, GREEN);
 
                 // --- Plotting Logic ---
                 float yScale = (float)original.height / (float)finalHeight;
-                int sourceY = (int)((mousePosition.y - posY) * yScale);
+                int sourceY = (int)((barY - posY) * yScale);
 
                 if (sourceY >= 0 && sourceY < original.height) {
                     if (currentChannel == CHANNEL_ORIGINAL) {
@@ -195,7 +251,7 @@ int main(int argc, char *argv[])
                                 plotArea.y + plotArea.height - (((float)value / 255.0f) * plotArea.height)
                             };
 
-                            if (x > 0) DrawLineV(prevPoint, currentPoint, plotColor);
+                            if (x > 0) DrawLineV(prevPoint, currentPoint, plotColor); 
                             prevPoint = currentPoint;
                         }
                     }

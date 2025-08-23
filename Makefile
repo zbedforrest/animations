@@ -45,8 +45,7 @@ watch:
 	@# 2. `entr -s '...'` runs the shell script in quotes on any change.
 	@# 3. `make all` builds the project. If it fails, the `&&` stops the script, leaving the old app running.
 	@# 4. `pkill -f ./build/main || true` kills the old running app. `|| true` prevents an error if it's not found.
-	@# 5. `./build/main &` starts the new app in the background, allowing entr to continue watching.
-	@./build/main &
-	@find $(SRCDIR) -type f | entr -s 'make all && (pkill -f ./build/main || true) && ./build/main &'
+	@# 5. `(./build/main &)` starts the new app in the background, allowing entr to continue watching.
+	@find $(SRCDIR) -type f | entr -n -s 'make all && (pkill -f ./build/main || true) && (./build/main &)'
 
 .PHONY: all run clean watch

@@ -10,8 +10,8 @@ int main(void)
 {
     // Initialization
     //--------------------------------------------------------------------------------------
-    const int screenWidth = 2450;
-    const int screenHeight = 2450;
+    const int screenWidth = 1000;
+    const int screenHeight = 800;
 
     SetConfigFlags(FLAG_MSAA_4X_HINT); // Enable 4x MSAA
     InitWindow(screenWidth, screenHeight, "Glowing Ring Shader");

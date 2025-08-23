@@ -83,6 +83,9 @@ void InitApp(AppState *state, const char *filename)
     state->currentView = VIEW_ANALYZER;
     state->lastMousePosition = (Vector2){ -1.0f, -1.0f };
     state->keyframe_pixels = (Color *)malloc(state->original.width * sizeof(Color));
+    state->recreationImage = GenImageColor(state->original.width, state->original.height, BLACK);
+    state->z_offset = 0;
+    state->stripe_height = 400; // Default stripe height
 }
 
 void RunApp(AppState *state)
@@ -114,4 +117,5 @@ void CleanupApp(AppState *state)
     UnloadImage(state->r_img);
     UnloadImage(state->g_img);
     UnloadImage(state->b_img);
+    UnloadImage(state->recreationImage);
 }

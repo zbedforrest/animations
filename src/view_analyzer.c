@@ -50,20 +50,20 @@ void UpdateAnalyzerView(AppState *state)
                 state->keyframe_pixels[x] = sourceData[sourceY * state->original.width + x];
             }
 
-            Image newImage = GenImageColor(state->original.width, state->original.height, BLACK);
-            Color *newPixels = (Color *)newImage.data;
-            for (int y = 0; y < newImage.height; y++) {
-                bool reversed = ((y / 100) % 2 != 0);
-                for (int x = 0; x < newImage.width; x++) {
-                    int sourceX = reversed ? (newImage.width - 1 - x) : x;
-                    newPixels[y * newImage.width + x] = state->keyframe_pixels[sourceX];
+            // Regenerate the recreation image with the new keyframe
+            Color *newPixels = (Color *)state->recreationImage.data;
+            for (int y = 0; y < state->recreationImage.height; y++) {
+                bool reversed = ((y / state->stripe_height) % 2 != 0);
+                for (int x = 0; x < state->recreationImage.width; x++) {
+                    int sourceX = reversed ? (state->recreationImage.width - 1 - x) : x;
+                    newPixels[y * state->recreationImage.width + x] = state->keyframe_pixels[sourceX];
                 }
             }
             
             if (state->recreationTexture.id > 0) UnloadTexture(state->recreationTexture);
-            state->recreationTexture = LoadTextureFromImage(newImage);
-            UnloadImage(newImage);
+            state->recreationTexture = LoadTextureFromImage(state->recreationImage);
             state->currentView = VIEW_RECREATE;
+            SetWindowSize(1000, 800);
         }
     }
 }

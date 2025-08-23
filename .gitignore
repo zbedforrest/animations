@@ -1,4 +1,7 @@
-# Ignore the build directory
-build/
-raylib/
-*analysis.png
+# Ignore build artifacts and local directories
+/build/
+/bin/
+/analysis_output/
+
+# Ignore downloaded libraries
+/raylib/

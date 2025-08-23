@@ -54,6 +54,11 @@ typedef struct {
 
     // Keyframe Data
     Color *keyframe_pixels;
+    Image recreationImage;
+    int z_offset;
+    int stripe_height;
+    double leftKeyDownTime;
+    double rightKeyDownTime;
 
 } AppState;
 

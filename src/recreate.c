@@ -9,6 +9,11 @@ typedef enum {
     CHANNEL_ORIGINAL
 } ActiveChannel;
 
+typedef enum {
+    VIEW_ANALYZER,
+    VIEW_RECREATE
+} AppView;
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -72,7 +77,7 @@ int main(int argc, char *argv[])
     // --- Setup Window and Display ---
     const int screenWidth = 1400;
     const int screenHeight = 800;
-    InitWindow(screenWidth, screenHeight, "Recreate - Color Channel Analyzer");
+    InitWindow(screenWidth, screenHeight, "Image Tool");
 
     const int renderAreaWidth = 1000;
     const int renderAreaHeight = 800;
@@ -108,17 +113,21 @@ int main(int argc, char *argv[])
     Rectangle gButton = { 60, 10, 40, 30 };
     Rectangle bButton = { 110, 10, 40, 30 };
     Rectangle originalButton = { 160, 10, 80, 30 };
-    ActiveChannel currentChannel = CHANNEL_ORIGINAL;
+    ActiveChannel currentChannel = CHANNEL_R;
+    AppView currentView = VIEW_ANALYZER;
 
     bool manualControl = false;
     float barY = 0;
     Vector2 lastMousePosition = { -1.0f, -1.0f };
 
-    // Key hold state
     double upKeyDownTime = 0.0;
     double downKeyDownTime = 0.0;
     const double HOLD_THRESHOLD = 0.5;
-    const float MOVE_SPEED = 20.0f;
+    const float MOVE_SPEED = 100.0f;
+
+    // --- Keyframe Data ---
+    Color *keyframe_pixels = (Color *)malloc(original.width * sizeof(Color));
+    Texture2D recreationTexture = { 0 };
 
     SetTargetFPS(60);
 
@@ -128,156 +137,169 @@ int main(int argc, char *argv[])
         Vector2 mousePosition = GetMousePosition();
         Rectangle imageBounds = { (float)posX, (float)posY, (float)finalWidth, (float)finalHeight };
 
-        // --- Update (Input Handling) ---
-        if (mousePosition.x != lastMousePosition.x || mousePosition.y != lastMousePosition.y) {
-            manualControl = false;
-            upKeyDownTime = 0.0;
-            downKeyDownTime = 0.0;
-        }
-        lastMousePosition = mousePosition;
+        // --- Global Input ---
+        if (IsKeyPressed(KEY_A)) currentView = VIEW_ANALYZER;
 
-        // Handle UP key
-        if (IsKeyPressed(KEY_UP)) {
-            manualControl = true;
-            barY -= 1;
-            upKeyDownTime = GetTime();
-        }
-        if (IsKeyDown(KEY_UP) && upKeyDownTime > 0.0) {
-            if ((GetTime() - upKeyDownTime) > HOLD_THRESHOLD) {
-                barY -= MOVE_SPEED * GetFrameTime();
+        // --- ANALYZER VIEW ---
+        if (currentView == VIEW_ANALYZER)
+        {
+            // --- Update (Input Handling) ---
+            if (mousePosition.x != lastMousePosition.x || mousePosition.y != lastMousePosition.y) {
+                manualControl = false;
+                upKeyDownTime = 0.0;
+                downKeyDownTime = 0.0;
             }
-        }
-        if (IsKeyReleased(KEY_UP)) {
-            upKeyDownTime = 0.0;
-        }
+            lastMousePosition = mousePosition;
 
-        // Handle DOWN key
-        if (IsKeyPressed(KEY_DOWN)) {
-            manualControl = true;
-            barY += 1;
-            downKeyDownTime = GetTime();
-        }
-        if (IsKeyDown(KEY_DOWN) && downKeyDownTime > 0.0) {
-            if ((GetTime() - downKeyDownTime) > HOLD_THRESHOLD) {
-                barY += MOVE_SPEED * GetFrameTime();
-            }
-        }
-        if (IsKeyReleased(KEY_DOWN)) {
-            downKeyDownTime = 0.0;
-        }
+            if (IsKeyPressed(KEY_UP)) { manualControl = true; barY -= 1; upKeyDownTime = GetTime(); }
+            if (IsKeyDown(KEY_UP) && upKeyDownTime > 0.0) { if ((GetTime() - upKeyDownTime) > HOLD_THRESHOLD) barY -= MOVE_SPEED * GetFrameTime(); }
+            if (IsKeyReleased(KEY_UP)) upKeyDownTime = 0.0;
 
+            if (IsKeyPressed(KEY_DOWN)) { manualControl = true; barY += 1; downKeyDownTime = GetTime(); }
+            if (IsKeyDown(KEY_DOWN) && downKeyDownTime > 0.0) { if ((GetTime() - downKeyDownTime) > HOLD_THRESHOLD) barY += MOVE_SPEED * GetFrameTime(); }
+            if (IsKeyReleased(KEY_DOWN)) downKeyDownTime = 0.0;
 
-        if (!manualControl) {
-            barY = mousePosition.y;
-        }
+            if (!manualControl) barY = mousePosition.y;
 
-        // Clamp barY to image bounds
-        if (barY < posY) barY = posY;
-        if (barY > posY + finalHeight - 1) barY = posY + finalHeight - 1;
+            if (barY < posY) barY = posY;
+            if (barY > posY + finalHeight - 1) barY = posY + finalHeight - 1;
 
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            if (CheckCollisionPointRec(mousePosition, rButton)) currentChannel = CHANNEL_R;
-            else if (CheckCollisionPointRec(mousePosition, gButton)) currentChannel = CHANNEL_G;
-            else if (CheckCollisionPointRec(mousePosition, bButton)) currentChannel = CHANNEL_B;
-            else if (CheckCollisionPointRec(mousePosition, originalButton)) currentChannel = CHANNEL_ORIGINAL;
-        }
-
-        // --- Draw ---
-        BeginDrawing();
-            ClearBackground(BLACK);
-
-            // Draw active texture
-            switch (currentChannel) {
-                case CHANNEL_R: DrawTexture(tex_r, posX, posY, WHITE); break;
-                case CHANNEL_G: DrawTexture(tex_g, posX, posY, WHITE); break;
-                case CHANNEL_B: DrawTexture(tex_b, posX, posY, WHITE); break;
-                case CHANNEL_ORIGINAL: DrawTexture(tex_original, posX, posY, WHITE); break;
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                if (CheckCollisionPointRec(mousePosition, rButton)) currentChannel = CHANNEL_R;
+                else if (CheckCollisionPointRec(mousePosition, gButton)) currentChannel = CHANNEL_G;
+                else if (CheckCollisionPointRec(mousePosition, bButton)) currentChannel = CHANNEL_B;
+                else if (CheckCollisionPointRec(mousePosition, originalButton)) currentChannel = CHANNEL_ORIGINAL;
             }
 
-            // Draw Plot Area
-            DrawRectangleLinesEx(plotArea, 1, WHITE);
-            DrawText("X-Coordinate", plotArea.x + plotArea.width/2 - 50, plotArea.y + plotArea.height + 10, 20, WHITE);
-            DrawText("Value", plotArea.x - 60, plotArea.y + plotArea.height/2 - 10, 20, WHITE);
-
-            if (CheckCollisionPointRec(mousePosition, imageBounds) || manualControl)
-            {
-                DrawRectangle(posX, (int)barY - 1, finalWidth, 1, GREEN);
-
-                // --- Plotting Logic ---
+            if (IsKeyPressed(KEY_K)) {
                 float yScale = (float)original.height / (float)finalHeight;
                 int sourceY = (int)((barY - posY) * yScale);
-
                 if (sourceY >= 0 && sourceY < original.height) {
-                    if (currentChannel == CHANNEL_ORIGINAL) {
-                        Vector2 prevR = {0}, prevG = {0}, prevB = {0};
-                        Color *sourceData = (Color *)original.data;
-                        for (int x = 0; x < original.width; x++) {
-                            Color p = sourceData[sourceY * original.width + x];
-                            float plotX = plotArea.x + ((float)x / (original.width - 1)) * plotArea.width;
-                            
-                            Vector2 curR = { plotX, plotArea.y + plotArea.height - (((float)p.r / 255.0f) * plotArea.height) };
-                            Vector2 curG = { plotX, plotArea.y + plotArea.height - (((float)p.g / 255.0f) * plotArea.height) };
-                            Vector2 curB = { plotX, plotArea.y + plotArea.height - (((float)p.b / 255.0f) * plotArea.height) };
+                    Color *sourceData = (Color *)original.data;
+                    for (int x = 0; x < original.width; x++) {
+                        keyframe_pixels[x] = sourceData[sourceY * original.width + x];
+                    }
 
-                            if (x > 0) {
-                                DrawLineV(prevR, curR, RED);
-                                DrawLineV(prevG, curG, GREEN);
-                                DrawLineV(prevB, curB, BLUE);
-                            }
-                            prevR = curR; prevG = curG; prevB = curB;
-                        }
-                    } else {
-                        Vector2 prevPoint = { 0 };
-                        Color plotColor = RED;
-                        Color *sourceData = NULL;
-                        switch (currentChannel) {
-                            case CHANNEL_R: sourceData = (Color *)r_img.data; plotColor = RED; break;
-                            case CHANNEL_G: sourceData = (Color *)g_img.data; plotColor = GREEN; break;
-                            case CHANNEL_B: sourceData = (Color *)b_img.data; plotColor = BLUE; break;
-                            case CHANNEL_ORIGINAL: break; // Should not happen
-                        }
-
-                        for (int x = 0; x < original.width; x++) {
-                            unsigned char value = 0;
-                            switch (currentChannel) {
-                                case CHANNEL_R: value = sourceData[sourceY * original.width + x].r; break;
-                                case CHANNEL_G: value = sourceData[sourceY * original.width + x].g; break;
-                                case CHANNEL_B: value = sourceData[sourceY * original.width + x].b; break;
-                                case CHANNEL_ORIGINAL: break; // Should not happen
-                            }
-                            
-                            Vector2 currentPoint = {
-                                plotArea.x + ((float)x / (original.width - 1)) * plotArea.width,
-                                plotArea.y + plotArea.height - (((float)value / 255.0f) * plotArea.height)
-                            };
-
-                            if (x > 0) DrawLineV(prevPoint, currentPoint, plotColor); 
-                            prevPoint = currentPoint;
+                    // Generate the recreation image
+                    Image newImage = GenImageColor(original.width, original.height, BLACK);
+                    Color *newPixels = (Color *)newImage.data;
+                    for (int y = 0; y < newImage.height; y++) {
+                        for (int x = 0; x < newImage.width; x++) {
+                            newPixels[y * newImage.width + x] = keyframe_pixels[x];
                         }
                     }
+                    
+                    if (recreationTexture.id > 0) UnloadTexture(recreationTexture);
+                    recreationTexture = LoadTextureFromImage(newImage);
+                    UnloadImage(newImage);
+                    currentView = VIEW_RECREATE;
                 }
             }
 
-            // Draw Buttons
-            DrawRectangleRec(rButton, (currentChannel == CHANNEL_R) ? MAROON : DARKGRAY);
-            DrawText("R", rButton.x + 15, rButton.y + 5, 20, WHITE);
-            DrawRectangleRec(gButton, (currentChannel == CHANNEL_G) ? DARKGREEN : DARKGRAY);
-            DrawText("G", gButton.x + 15, gButton.y + 5, 20, WHITE);
-            DrawRectangleRec(bButton, (currentChannel == CHANNEL_B) ? DARKBLUE : DARKGRAY);
-            DrawText("B", bButton.x + 15, bButton.y + 5, 20, WHITE);
-            DrawRectangleRec(originalButton, (currentChannel == CHANNEL_ORIGINAL) ? PURPLE : DARKGRAY);
-            DrawText("Orig", originalButton.x + 15, originalButton.y + 5, 20, WHITE);
+            // --- Draw ---
+            BeginDrawing();
+                ClearBackground(BLACK);
+                switch (currentChannel) {
+                    case CHANNEL_R: DrawTexture(tex_r, posX, posY, WHITE); break;
+                    case CHANNEL_G: DrawTexture(tex_g, posX, posY, WHITE); break;
+                    case CHANNEL_B: DrawTexture(tex_b, posX, posY, WHITE); break;
+                    case CHANNEL_ORIGINAL: DrawTexture(tex_original, posX, posY, WHITE); break;
+                }
+                DrawRectangleLinesEx(plotArea, 1, WHITE);
+                DrawText("X-Coordinate", plotArea.x + plotArea.width/2 - 50, plotArea.y + plotArea.height + 10, 20, WHITE);
+                DrawText("Value", plotArea.x - 60, plotArea.y + plotArea.height/2 - 10, 20, WHITE);
 
-        EndDrawing();
+                if (CheckCollisionPointRec(mousePosition, imageBounds) || manualControl) {
+                    DrawRectangle(posX, (int)barY - 1, finalWidth, 1, GREEN);
+                    
+                    // --- Plotting Logic ---
+                    float yScale = (float)original.height / (float)finalHeight;
+                    int sourceY = (int)((barY - posY) * yScale);
+
+                    if (sourceY >= 0 && sourceY < original.height) {
+                        if (currentChannel == CHANNEL_ORIGINAL) {
+                            Vector2 prevR = {0}, prevG = {0}, prevB = {0};
+                            Color *sourceData = (Color *)original.data;
+                            for (int x = 0; x < original.width; x++) {
+                                Color p = sourceData[sourceY * original.width + x];
+                                float plotX = plotArea.x + ((float)x / (original.width - 1)) * plotArea.width;
+                                
+                                Vector2 curR = { plotX, plotArea.y + plotArea.height - (((float)p.r / 255.0f) * plotArea.height) };
+                                Vector2 curG = { plotX, plotArea.y + plotArea.height - (((float)p.g / 255.0f) * plotArea.height) };
+                                Vector2 curB = { plotX, plotArea.y + plotArea.height - (((float)p.b / 255.0f) * plotArea.height) };
+
+                                if (x > 0) {
+                                    DrawLineV(prevR, curR, RED);
+                                    DrawLineV(prevG, curG, GREEN);
+                                    DrawLineV(prevB, curB, BLUE);
+                                }
+                                prevR = curR; prevG = curG; prevB = curB;
+                            }
+                        } else {
+                            Vector2 prevPoint = { 0 };
+                            Color plotColor = RED;
+                            Color *sourceData = NULL;
+                            switch (currentChannel) {
+                                case CHANNEL_R: sourceData = (Color *)r_img.data; plotColor = RED; break;
+                                case CHANNEL_G: sourceData = (Color *)g_img.data; plotColor = GREEN; break;
+                                case CHANNEL_B: sourceData = (Color *)b_img.data; plotColor = BLUE; break;
+                                case CHANNEL_ORIGINAL: break; // Should not happen
+                            }
+
+                            for (int x = 0; x < original.width; x++) {
+                                unsigned char value = 0;
+                                switch (currentChannel) {
+                                    case CHANNEL_R: value = sourceData[sourceY * original.width + x].r; break;
+                                    case CHANNEL_G: value = sourceData[sourceY * original.width + x].g; break;
+                                    case CHANNEL_B: value = sourceData[sourceY * original.width + x].b; break;
+                                    case CHANNEL_ORIGINAL: break; // Should not happen
+                                }
+                                
+                                Vector2 currentPoint = {
+                                    plotArea.x + ((float)x / (original.width - 1)) * plotArea.width,
+                                    plotArea.y + plotArea.height - (((float)value / 255.0f) * plotArea.height)
+                                };
+
+                                if (x > 0) DrawLineV(prevPoint, currentPoint, plotColor);
+                                prevPoint = currentPoint;
+                            }
+                        }
+                    }
+                }
+                DrawRectangleRec(rButton, (currentChannel == CHANNEL_R) ? MAROON : DARKGRAY);
+                DrawText("R", rButton.x + 15, rButton.y + 5, 20, WHITE);
+                DrawRectangleRec(gButton, (currentChannel == CHANNEL_G) ? DARKGREEN : DARKGRAY);
+                DrawText("G", gButton.x + 15, gButton.y + 5, 20, WHITE);
+                DrawRectangleRec(bButton, (currentChannel == CHANNEL_B) ? DARKBLUE : DARKGRAY);
+                DrawText("B", bButton.x + 15, bButton.y + 5, 20, WHITE);
+                DrawRectangleRec(originalButton, (currentChannel == CHANNEL_ORIGINAL) ? PURPLE : DARKGRAY);
+                DrawText("Orig", originalButton.x + 15, originalButton.y + 5, 20, WHITE);
+                DrawText("Press [K] to Keyframe", 260, 15, 20, WHITE);
+            EndDrawing();
+        }
+        // --- RECREATE VIEW ---
+        else if (currentView == VIEW_RECREATE)
+        {
+            BeginDrawing();
+                ClearBackground(BLACK);
+                if (recreationTexture.id > 0) {
+                    DrawTexturePro(recreationTexture, (Rectangle){ 0, 0, (float)recreationTexture.width, (float)recreationTexture.height },
+                                   (Rectangle){ 0, 0, (float)screenWidth, (float)screenHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+                }
+                DrawText("RECREATION VIEW", 10, 10, 20, WHITE);
+                DrawText("Press [A] to return to Analyzer", 10, 40, 20, WHITE);
+            EndDrawing();
+        }
     }
 
     // --- Cleanup ---
+    if (recreationTexture.id > 0) UnloadTexture(recreationTexture);
+    free(keyframe_pixels);
     UnloadTexture(tex_r);
     UnloadTexture(tex_g);
     UnloadTexture(tex_b);
     UnloadTexture(tex_original);
     CloseWindow();
-
     UnloadImage(original);
     UnloadImage(r_img);
     UnloadImage(g_img);

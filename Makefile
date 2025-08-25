@@ -1,4 +1,4 @@
-# Makefile for raylib project
+# Makefile for raylib project on Windows
 
 # Compiler
 CC = gcc
@@ -6,62 +6,68 @@ CC = gcc
 # Directories
 SRCDIR = src
 INCDIR = include
-OBJDIR = build
-BINDIR = bin
-ASSETDIR = assets
+BUILDDIR = build
+BINDIR = .
 
-# Project names
-TARGET_SHADER = main
-TARGET_TOOL = image_tooll
-
-# Source files
-TOOL_SOURCES = $(filter-out $(SRCDIR)/shader_main.c, $(wildcard $(SRCDIR)/*.c))
-SHADER_SRC = $(SRCDIR)/shader_main.c
-
-# Object files
-TOOL_OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(TOOL_SOURCES))
-SHADER_OBJECT = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SHADER_SRC))
-
-# Executables
-TOOL_EXEC = $(BINDIR)/$(TARGET_TOOL)
-SHADER_EXEC = $(BINDIR)/$(TARGET_SHADER)
+# Raylib path
+RAYLIB_PATH = ../raylib-quickstart
+RAYLIB_HEADER_PATH = $(RAYLIB_PATH)/build/external/raylib-master/src
 
 # Flags
-CFLAGS = -Wall -Wextra -I$(INCDIR) `pkg-config --cflags raylib`
-LDFLAGS = `pkg-config --libs raylib`
+CFLAGS = -Wall -Wextra -g -I$(INCDIR) -I$(RAYLIB_HEADER_PATH)
+LDFLAGS = -L$(RAYLIB_PATH)/bin/Debug -lraylib -lopengl32 -lgdi32 -lwinmm -static -mwindows
 
-# Default target - build the tool
-all: $(TOOL_EXEC)
+# --- Shader Program ---
+SHADER_SOURCES = $(filter-out $(SRCDIR)/main.c, $(wildcard $(SRCDIR)/*.c))
+SHADER_OBJECTS = $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(SHADER_SOURCES))
+SHADER_TARGET = main.exe
 
-# Rule to build the shader executable
-shader: $(SHADER_EXEC)
+# --- Recreate/Tool Program ---
+RECREATE_SOURCES = $(filter-out $(SRCDIR)/shader_main.c, $(wildcard $(SRCDIR)/*.c))
+RECREATE_OBJECTS = $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/recreate_%.o,$(RECREATE_SOURCES))
+RECREATE_TARGET = recreate.exe
 
-$(SHADER_EXEC): $(SHADER_OBJECT)
-	@mkdir -p $(BINDIR)
-	$(CC) $(SHADER_OBJECT) -o $@ $(LDFLAGS)
+# Default target (builds the shader program)
+all: $(SHADER_TARGET)
 
-# Rule to build the tool executable
-tool: $(TOOL_EXEC)
+# --- Build Rules ---
 
-$(TOOL_EXEC): $(TOOL_OBJECTS)
-	@mkdir -p $(BINDIR)
-	$(CC) $(TOOL_OBJECTS) -o $@ $(LDFLAGS)
+# Build the shader program
+$(SHADER_TARGET): $(SHADER_OBJECTS)
+	$(CC) $(SHADER_OBJECTS) -o $(BINDIR)/$(SHADER_TARGET) $(LDFLAGS)
 
-# Rule to compile source files into object files
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-	@mkdir -p $(OBJDIR)
+# Build the recreate program
+$(RECREATE_TARGET): $(RECREATE_OBJECTS)
+	$(CC) $(RECREATE_OBJECTS) -o $(BINDIR)/$(RECREATE_TARGET) $(LDFLAGS)
+
+# Compile source files for the shader program
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Run the shader
-run_shader: shader
-	$(SHADER_EXEC)
+# Compile source files for the recreate program
+$(BUILDDIR)/recreate_%.o: $(SRCDIR)/%.c
+	@mkdir -p $(BUILDDIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Run the tool
-run: tool
-	$(TOOL_EXEC) $(ASSETDIR)/TARGET.png
+
+# --- Run Rules ---
+
+# Run the shader program
+run: all
+	@$(BINDIR)/$(SHADER_TARGET)
+
+# Target to build and run the recreate program
+run_recreate: $(RECREATE_TARGET)
+	@$(BINDIR)/$(RECREATE_TARGET) assets/TARGET.png
+
+
+# --- Housekeeping ---
 
 # Clean up build files
 clean:
-	rm -rf $(OBJDIR)/* $(BINDIR)/*
+	@if exist $(BUILDDIR) rd /s /q $(BUILDDIR)
+	@if exist $(SHADER_TARGET) del $(SHADER_TARGET)
+	@if exist $(RECREATE_TARGET) del $(RECREATE_TARGET)
 
-.PHONY: all shader tool run_shader run clean
+.PHONY: all run run_recreate clean

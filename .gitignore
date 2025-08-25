@@ -6,3 +6,4 @@
 # Ignore downloaded libraries
 /raylib/
 /bin/
+*.exe

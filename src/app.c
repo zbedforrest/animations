@@ -92,7 +92,7 @@ void InitApp(AppState *state, const char *filename)
     state->t = 0.0f;
     state->dt = 1.0f;
 
-    state->recreateShaderView = RecreateShaderView_Init();
+    state->recreateShaderView = RecreateShaderView_Init(state);
 }
 
 void RunApp(AppState *state)

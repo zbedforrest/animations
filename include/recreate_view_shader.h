@@ -8,9 +8,11 @@ typedef struct RecreateShaderView {
   Shader shader;
   int timeLoc;
   int resolutionLoc;
+  RenderTexture2D target;
+  Texture2D texture;
 } RecreateShaderView;
 
-RecreateShaderView *RecreateShaderView_Init(void);
+RecreateShaderView *RecreateShaderView_Init(AppState *state);
 void RecreateShaderView_Update(RecreateShaderView *view, AppState *state);
 void RecreateShaderView_Draw(RecreateShaderView *view, AppState *state);
 void RecreateShaderView_Exit(RecreateShaderView *view);

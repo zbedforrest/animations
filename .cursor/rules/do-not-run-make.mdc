@@ -1,0 +1,5 @@
+---
+description: Never run the "make" build command
+globs:
+alwaysApply: true
+---

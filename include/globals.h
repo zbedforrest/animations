@@ -43,6 +43,7 @@ typedef struct {
     Rectangle gButton;
     Rectangle bButton;
     Rectangle originalButton;
+    Rectangle shadermodeButton;
 
     // State
     AppView currentView;

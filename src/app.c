@@ -80,6 +80,7 @@ void InitApp(AppState *state, const char *filename)
     state->gButton = (Rectangle){ 60, 10, 40, 30 };
     state->bButton = (Rectangle){ 110, 10, 40, 30 };
     state->originalButton = (Rectangle){ 160, 10, 80, 30 };
+    state->shadermodeButton = (Rectangle){ 250, 10, 80, 30 };
     state->currentChannel = CHANNEL_R;
     state->currentView = VIEW_ANALYZER;
     state->lastMousePosition = (Vector2){ -1.0f, -1.0f };

@@ -38,6 +38,10 @@ void UpdateAnalyzerView(AppState *state)
         else if (CheckCollisionPointRec(mousePosition, state->gButton)) state->currentChannel = CHANNEL_G;
         else if (CheckCollisionPointRec(mousePosition, state->bButton)) state->currentChannel = CHANNEL_B;
         else if (CheckCollisionPointRec(mousePosition, state->originalButton)) state->currentChannel = CHANNEL_ORIGINAL;
+        else if (CheckCollisionPointRec(mousePosition, state->shadermodeButton)) {
+            printf("Shader mode button clicked - switching to VIEW_RECREATE_SHADER\n");
+            state->currentView = VIEW_RECREATE_SHADER;
+        }
     }
 
     // Keyframe capture
@@ -140,7 +144,8 @@ void DrawAnalyzerView(AppState *state)
         DrawRectangleRec(state->gButton, (state->currentChannel == CHANNEL_G) ? DARKGREEN : DARKGRAY); DrawText("G", state->gButton.x + 15, state->gButton.y + 5, 20, WHITE);
         DrawRectangleRec(state->bButton, (state->currentChannel == CHANNEL_B) ? DARKBLUE : DARKGRAY); DrawText("B", state->bButton.x + 15, state->bButton.y + 5, 20, WHITE);
         DrawRectangleRec(state->originalButton, (state->currentChannel == CHANNEL_ORIGINAL) ? PURPLE : DARKGRAY); DrawText("Orig", state->originalButton.x + 15, state->originalButton.y + 5, 20, WHITE);
-        DrawText("Press [K] to Keyframe", 260, 15, 20, WHITE);
+        DrawRectangleRec(state->shadermodeButton, (state->currentView == VIEW_RECREATE_SHADER) ? PURPLE : DARKGRAY); DrawText("Shader", state->shadermodeButton.x + 15, state->shadermodeButton.y + 5, 20, WHITE);
+        DrawText("Press [K] to Keyframe", 360, 15, 20, WHITE);
         DrawFPS(1300, 10);
     EndDrawing();
 }

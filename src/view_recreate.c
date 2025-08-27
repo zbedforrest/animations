@@ -109,6 +109,39 @@ void DrawRecreateView(AppState *state)
 //----------------------------------------------------------------------------------
 // Module Local Functions Definition
 //----------------------------------------------------------------------------------
+static unsigned char get_animated_r(AppState *state, int x, bool reversed) {
+    int width = state->recreationImage.width;
+    int sourceX_r;
+    if (reversed) {
+        sourceX_r = ((x + state->z_offset - (int)state->t) % width + width) % width;
+    } else {
+        sourceX_r = ((x + state->z_offset + (int)state->t) % width + width) % width;
+    }
+    return state->keyframe_pixels[sourceX_r].r;
+}
+
+static unsigned char get_animated_g(AppState *state, int x, bool reversed) {
+    int width = state->recreationImage.width;
+    int sourceX_g;
+    if (reversed) {
+        sourceX_g = ((x + state->z_offset - (int)state->t) % width + width) % width;
+    } else {
+        sourceX_g = ((x + state->z_offset + (int)state->t) % width + width) % width;
+    }
+    return state->keyframe_pixels[sourceX_g].g;
+}
+
+static unsigned char get_animated_b(AppState *state, int x, bool reversed) {
+    int width = state->recreationImage.width;
+    int sourceX_b;
+    if (reversed) {
+        sourceX_b = ((x + state->z_offset - (int)state->t) % width + width) % width;
+    } else {
+        sourceX_b = ((x + state->z_offset + (int)state->t) % width + width) % width;
+    }
+    return state->keyframe_pixels[sourceX_b].b;
+}
+
 static void RegenerateRecreationImage(AppState *state)
 {
     Color *newPixels = (Color *)state->recreationImage.data;
@@ -118,26 +151,12 @@ static void RegenerateRecreationImage(AppState *state)
     for (int y = 0; y < height; y++) {
         bool reversed = ((y / state->stripe_height) % 2 != 0);
         for (int x = 0; x < width; x++) {
+            Color *pixel = &newPixels[y * width + x];
             if (state->animating) {
-                int sourceX_b;
-                if (reversed) {
-                    sourceX_b = ((x + state->z_offset - (int)state->t) % width + width) % width;
-                } else {
-                    sourceX_b = ((x + state->z_offset + (int)state->t) % width + width) % width;
-                }
-                
-                Color *pixel = &newPixels[y * width + x];
-                pixel->b = state->keyframe_pixels[sourceX_b].b;
+                pixel->r = get_animated_r(state, x, reversed);
+                pixel->g = get_animated_g(state, x, reversed);
+                pixel->b = get_animated_b(state, x, reversed);
                 pixel->a = 255;
-
-                int sourceX_rg;
-                if (reversed) {
-                    sourceX_rg = (((width - 1 - x) + state->z_offset) % width + width) % width;
-                } else {
-                    sourceX_rg = x;
-                }
-                pixel->r = state->keyframe_pixels[sourceX_rg].r;
-                pixel->g = state->keyframe_pixels[sourceX_rg].g;
             } else {
                 int sourceX;
                 if (reversed) {
@@ -145,7 +164,7 @@ static void RegenerateRecreationImage(AppState *state)
                 } else {
                     sourceX = x;
                 }
-                newPixels[y * width + x] = state->keyframe_pixels[sourceX];
+                *pixel = state->keyframe_pixels[sourceX];
             }
         }
     }

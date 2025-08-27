@@ -103,6 +103,7 @@ void DrawRecreateView(AppState *state)
 
         DrawText(zText, 1000 - zTextWidth - padding, 800 - (fontSize * 2) - (padding * 2), fontSize, GREEN);
         DrawText(tText, 1000 - tTextWidth - padding, 800 - fontSize - padding, fontSize, GREEN);
+        DrawFPS(900, 10);
     EndDrawing();
 }
 

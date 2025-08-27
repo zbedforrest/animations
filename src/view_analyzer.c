@@ -141,5 +141,6 @@ void DrawAnalyzerView(AppState *state)
         DrawRectangleRec(state->bButton, (state->currentChannel == CHANNEL_B) ? DARKBLUE : DARKGRAY); DrawText("B", state->bButton.x + 15, state->bButton.y + 5, 20, WHITE);
         DrawRectangleRec(state->originalButton, (state->currentChannel == CHANNEL_ORIGINAL) ? PURPLE : DARKGRAY); DrawText("Orig", state->originalButton.x + 15, state->originalButton.y + 5, 20, WHITE);
         DrawText("Press [K] to Keyframe", 260, 15, 20, WHITE);
+        DrawFPS(1300, 10);
     EndDrawing();
 }

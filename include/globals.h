@@ -15,7 +15,8 @@ typedef enum {
 
 typedef enum {
     VIEW_ANALYZER,
-    VIEW_RECREATE
+    VIEW_RECREATE,
+    VIEW_RECREATE_SHADER
 } AppView;
 
 typedef struct {
@@ -65,6 +66,9 @@ typedef struct {
     float t;
     float dt;
     Rectangle animateButton;
+
+    // Shader
+    Shader recreateShader;
 
 } AppState;
 

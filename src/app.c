@@ -1,6 +1,7 @@
 #include "app.h"
 #include "view_analyzer.h"
 #include "view_recreate.h"
+#include "recreate_view_shader.h"
 #include <stdlib.h> // For exit()
 
 //----------------------------------------------------------------------------------
@@ -89,12 +90,18 @@ void InitApp(AppState *state, const char *filename)
     state->animating = true;
     state->t = 0.0f;
     state->dt = 1.0f;
+
+    InitRecreateViewShader(state);
 }
 
 void RunApp(AppState *state)
 {
     while (!WindowShouldClose())
     {
+        if (IsKeyPressed(KEY_S)) {
+            state->currentView = VIEW_RECREATE_SHADER;
+        }
+
         switch (state->currentView) {
             case VIEW_ANALYZER:
                 UpdateAnalyzerView(state);
@@ -103,6 +110,10 @@ void RunApp(AppState *state)
             case VIEW_RECREATE:
                 UpdateRecreateView(state);
                 DrawRecreateView(state);
+                break;
+            case VIEW_RECREATE_SHADER:
+                UpdateRecreateViewShader(state);
+                DrawRecreateViewShader(state);
                 break;
         }
     }

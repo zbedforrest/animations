@@ -1,29 +1,59 @@
 #include "recreate_view_shader.h"
+#include "globals.h"
 #include "raylib.h"
+#include <stdlib.h>
 
-void InitRecreateViewShader(AppState *state)
-{
-    state->recreateShader = LoadShader("src/recreate_view_shader.vs", "src/recreate_view_shader.fs");
+RecreateShaderView *RecreateShaderView_Init(void) {
+  RecreateShaderView *view = malloc(sizeof(RecreateShaderView));
+  if (view == NULL) {
+    return NULL;
+  }
+
+  // Load the glow ring shader
+  view->shader = LoadShader(0, "src/glow_ring.fs");
+
+  // Get shader uniform locations
+  view->timeLoc = GetShaderLocation(view->shader, "u_time");
+  view->resolutionLoc = GetShaderLocation(view->shader, "u_resolution");
+
+  // Set the resolution uniform
+  float resolution[2] = {(float)GetScreenWidth(), (float)GetScreenHeight()};
+  SetShaderValue(view->shader, view->resolutionLoc, resolution,
+                 SHADER_UNIFORM_VEC2);
+
+  return view;
 }
 
-void UpdateRecreateViewShader(AppState *state)
-{
-    if (IsKeyPressed(KEY_A)) {
-        state->currentView = VIEW_ANALYZER;
-        SetWindowSize(1400, 800);
-    }
+void RecreateShaderView_Update(RecreateShaderView *view, AppState *state) {
+  // Handle view switching
+  if (IsKeyPressed(KEY_RIGHT)) {
+    state->currentView = VIEW_ANALYZER;
+  }
+  if (IsKeyPressed(KEY_LEFT)) {
+    state->currentView = VIEW_RECREATE;
+  }
+
+  // Update the time uniform for the animation
+  float time = (float)GetTime();
+  SetShaderValue(view->shader, view->timeLoc, &time, SHADER_UNIFORM_FLOAT);
 }
 
-void DrawRecreateViewShader(AppState *state)
-{
-    BeginDrawing();
-    ClearBackground(BLACK);
+void RecreateShaderView_Draw(RecreateShaderView *view, AppState *state) {
+  (void)state; // Unused
 
-    BeginShaderMode(state->recreateShader);
-    DrawTexture(state->tex_original, 0, 0, WHITE);
-    EndShaderMode();
+  BeginDrawing();
+  ClearBackground(BLACK);
 
-    DrawText("RECREATE VIEW SHADER", 10, 10, 20, WHITE);
-    DrawFPS(900, 10);
-    EndDrawing();
+  // Use the shader to draw on the whole screen
+  BeginShaderMode(view->shader);
+  DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), WHITE);
+  EndShaderMode();
+
+  DrawFPS(10, 10);
+  EndDrawing();
+}
+
+void RecreateShaderView_Exit(RecreateShaderView *view) {
+  UnloadShader(view->shader);
+  free(view);
 }

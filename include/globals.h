@@ -19,6 +19,10 @@ typedef enum {
     VIEW_RECREATE_SHADER
 } AppView;
 
+
+// Forward declaration
+struct RecreateShaderView;
+
 typedef struct {
     // Core Data
     Image original;
@@ -68,8 +72,8 @@ typedef struct {
     float dt;
     Rectangle animateButton;
 
-    // Shader
-    Shader recreateShader;
+    // Views
+    struct RecreateShaderView *recreateShaderView;
 
 } AppState;
 

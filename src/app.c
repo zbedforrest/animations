@@ -1,7 +1,7 @@
 #include "app.h"
+#include "recreate_view_shader.h"
 #include "view_analyzer.h"
 #include "view_recreate.h"
-#include "recreate_view_shader.h"
 #include <stdlib.h> // For exit()
 
 //----------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ void InitApp(AppState *state, const char *filename)
     state->t = 0.0f;
     state->dt = 1.0f;
 
-    InitRecreateViewShader(state);
+    state->recreateShaderView = RecreateShaderView_Init();
 }
 
 void RunApp(AppState *state)
@@ -101,6 +101,7 @@ void RunApp(AppState *state)
     {
         if (IsKeyPressed(KEY_S)) {
             state->currentView = VIEW_RECREATE_SHADER;
+            SetWindowSize(1000, 800);
         }
 
         switch (state->currentView) {
@@ -113,8 +114,8 @@ void RunApp(AppState *state)
                 DrawRecreateView(state);
                 break;
             case VIEW_RECREATE_SHADER:
-                UpdateRecreateViewShader(state);
-                DrawRecreateViewShader(state);
+                RecreateShaderView_Update(state->recreateShaderView, state);
+                RecreateShaderView_Draw(state->recreateShaderView, state);
                 break;
         }
     }
@@ -122,6 +123,7 @@ void RunApp(AppState *state)
 
 void CleanupApp(AppState *state)
 {
+    RecreateShaderView_Exit(state->recreateShaderView);
     if (state->recreationTexture.id > 0) UnloadTexture(state->recreationTexture);
     free(state->keyframe_pixels);
     UnloadTexture(state->tex_r);

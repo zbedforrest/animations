@@ -3,6 +3,8 @@
 #include "view_analyzer.h"
 #include "view_recreate.h"
 #include <stdlib.h> // For exit()
+#include <stdio.h>  // For snprintf
+#include <string.h> // For string functions
 
 //----------------------------------------------------------------------------------
 // Module Functions Definition
@@ -92,6 +94,13 @@ void InitApp(AppState *state, const char *filename)
     state->t = 0.0f;
     state->dt = 1.0f;
 
+    // Initialize video recording state
+    state->recording = false;
+    state->frame_count = 0;
+    state->max_frames = 3000; // Max 3000 frames (about 2 minutes at 30fps)
+    state->frame_buffer = NULL;
+    snprintf(state->recording_dir, sizeof(state->recording_dir), "video_frames");
+
     state->recreateShaderView = RecreateShaderView_Init(state);
 }
 
@@ -135,4 +144,12 @@ void CleanupApp(AppState *state)
     free(state->g_img.data);
     free(state->b_img.data);
     UnloadImage(state->recreationImage);
+    
+    // Cleanup video recording resources
+    if (state->frame_buffer) {
+        for (int i = 0; i < state->frame_count; i++) {
+            UnloadImage(state->frame_buffer[i]);
+        }
+        free(state->frame_buffer);
+    }
 }

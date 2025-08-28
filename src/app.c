@@ -87,7 +87,7 @@ void InitApp(AppState *state, const char *filename)
     state->keyframe_pixels = (Color *)malloc(state->original.width * sizeof(Color));
     state->recreationImage = GenImageColor(state->original.width, state->original.height, BLACK);
     state->z_offset = 0;
-    state->stripe_height = 400; // Default stripe height
+    state->stripe_height = 100; // Default stripe height
     state->animating = true;
     state->t = 0.0f;
     state->dt = 1.0f;

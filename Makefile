@@ -47,7 +47,7 @@ $(BUILDDIR)/recreate_%.o: $(SRCDIR)/%.c
 
 # Run the recreate program
 run: all
-	@$(BINDIR)/$(TARGET) assets/TARGET.png
+	@$(BINDIR)/$(TARGET) assets/TARGET5.png
 
 
 

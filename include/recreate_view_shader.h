@@ -10,6 +10,8 @@ typedef struct RecreateShaderView {
   int resolutionLoc;
   RenderTexture2D target;
   Texture2D texture;
+  int swirlCenterLoc;
+  float swirlCenter[2];
 } RecreateShaderView;
 
 RecreateShaderView *RecreateShaderView_Init(AppState *state);

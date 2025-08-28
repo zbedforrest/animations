@@ -3,20 +3,26 @@
 #include "raylib.h"
 #include <stdlib.h>
 
+
+static int frameCount = 0;
+
+
 RecreateShaderView *RecreateShaderView_Init(AppState *state) {
   RecreateShaderView *view = malloc(sizeof(RecreateShaderView));
   if (view == NULL) {
     return NULL;
   }
 
-  view->texture = LoadTexture("assets/TARGET3.png");   // Load model texture (diffuse map)
+  view->texture = LoadTexture("assets/TARGET5.png");   // Load model texture (diffuse map)
+  
 
   view->shader = LoadShader(0, "src/recreate_view_shader.fs");
-  int swirlCenterLoc = GetShaderLocation(view->shader, "center");
-  float swirlCenter[2] = { (float)state->finalWidth/2, (float)state->finalHeight/2 };
-  SetShaderValue(view->shader, swirlCenterLoc, swirlCenter, SHADER_UNIFORM_VEC2);
+  view->swirlCenterLoc = GetShaderLocation(view->shader, "center");
+  view->swirlCenter[0] = (float)state->finalWidth/2;
+  view->swirlCenter[1] = (float)state->finalHeight/2;
+  SetShaderValue(view->shader, view->swirlCenterLoc, view->swirlCenter, SHADER_UNIFORM_VEC2);
   // Create a RenderTexture2D to be used for render to texture
-  view->target = LoadRenderTexture(state->finalWidth, state->finalHeight);
+  view->target = LoadRenderTexture(view->texture.width, view->texture.height);
 
   // Get shader uniform locations
   view->timeLoc = GetShaderLocation(view->shader, "u_time");
@@ -47,6 +53,12 @@ void RecreateShaderView_Update(RecreateShaderView *view, AppState *state) {
 void RecreateShaderView_Draw(RecreateShaderView *view, AppState *state) {
   (void)state; // Unused
 
+  Vector2 mousePosition = GetMousePosition();
+  view->swirlCenter[0] = mousePosition.x;
+  view->swirlCenter[1] = GetScreenHeight() - mousePosition.y;
+  SetShaderValue(view->shader, view->swirlCenterLoc, view->swirlCenter, SHADER_UNIFORM_VEC2);
+
+
   BeginTextureMode(view->target);       // Enable drawing to texture
     ClearBackground(RAYWHITE);  // Clear texture background
     DrawTexture(view->texture, 0, 0, WHITE);
@@ -57,14 +69,20 @@ void RecreateShaderView_Draw(RecreateShaderView *view, AppState *state) {
   ClearBackground(BLACK);
 
   // // Use the shader to draw on the whole screen
-  // BeginShaderMode(view->shader);
-  // DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), WHITE);
-  // EndShaderMode();
+  BeginShaderMode(view->shader);
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), WHITE);
+    DrawTexture(view->target.texture,  0,0 , WHITE);
+  EndShaderMode();
 
-  DrawTextureRec(view->target.texture, (Rectangle){ 0, 0, (float)view->target.texture.width, (float)-view->target.texture.height }, (Vector2){ 0, 0 }, WHITE);
-
-  DrawFPS(10, 10);
+  // DrawFPS(10, 10);
   EndDrawing();
+
+  // After the first frame is drawn, capture screenshot and exit
+  frameCount++;
+  if (IsKeyPressed(KEY_P)) { // Wait for at least 2 frames to ensure everything is rendered
+    TakeScreenshot("output_screenshot.png");
+    exit(0); // Close the program
+  }
 }
 
 void RecreateShaderView_Exit(RecreateShaderView *view) {

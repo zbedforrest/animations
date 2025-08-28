@@ -18,9 +18,10 @@ const float renderWidth = 800;
 const float renderHeight = 450;
 
 float radius = 250.0;
-float angle = 0.8;
+float angle = 0;
 
 uniform vec2 center = vec2(200.0, 200.0);
+uniform float t = 0.0;
 
 void main()
 {
@@ -43,5 +44,5 @@ void main()
     tc += center;
     vec4 color = texture(texture0, tc/texSize)*colDiffuse*fragColor;;
 
-    finalColor = vec4(color.g, color.r, color.b, 1.0);;
+    finalColor = vec4(color.rgb, 1.0);;
 }

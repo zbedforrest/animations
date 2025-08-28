@@ -72,6 +72,13 @@ typedef struct {
     float dt;
     Rectangle animateButton;
 
+    // Video Recording State
+    bool recording;
+    int frame_count;
+    char recording_dir[256];
+    Image *frame_buffer;
+    int max_frames;
+
     // Views
     struct RecreateShaderView *recreateShaderView;
 

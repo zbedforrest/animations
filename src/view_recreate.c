@@ -13,10 +13,6 @@ static void RegenerateRecreationImage(AppState *state);
 void UpdateRecreateView(AppState *state)
 {
     bool z_changed = false;
-    Vector2 mousePosition = GetMousePosition();
-
-    // Define Animate button here as its position is calculated dynamically
-    state->animateButton = (Rectangle){ 10, 100, 120, 30 };
 
     // Return to analyzer
     if (IsKeyPressed(KEY_A)) {
@@ -26,7 +22,7 @@ void UpdateRecreateView(AppState *state)
     }
 
     // Toggle animation
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mousePosition, state->animateButton)) {
+    if (IsKeyPressed(KEY_SPACE)) {
         state->animating = !state->animating;
     }
 
@@ -84,26 +80,6 @@ void DrawRecreateView(AppState *state)
             DrawTexturePro(state->recreationTexture, (Rectangle){ 0, 0, (float)state->recreationTexture.width, (float)state->recreationTexture.height },
                            (Rectangle){ 0, 0, 1000, 800 }, (Vector2){ 0, 0 }, 0.0f, WHITE);
         }
-        DrawText("RECREATION VIEW", 10, 10, 20, WHITE);
-        DrawText("Press [A] to return to Analyzer", 10, 40, 20, WHITE);
-        DrawText("Use Left/Right Arrows to change Z-Offset", 10, 70, 20, WHITE);
-
-        // Draw Animate Button
-        DrawRectangleRec(state->animateButton, state->animating ? DARKGREEN : DARKGRAY);
-        DrawText(state->animating ? "Animating..." : "Animate", state->animateButton.x + 10, state->animateButton.y + 5, 20, WHITE);
-
-
-        // Draw Z-Offset and t values on the bottom right
-        const int fontSize = 20;
-        const int padding = 10;
-        const char *zText = TextFormat("Z: %d", state->z_offset);
-        const char *tText = TextFormat("t: %.3f", state->t);
-        int zTextWidth = MeasureText(zText, fontSize);
-        int tTextWidth = MeasureText(tText, fontSize);
-
-        DrawText(zText, 1000 - zTextWidth - padding, 800 - (fontSize * 2) - (padding * 2), fontSize, GREEN);
-        DrawText(tText, 1000 - tTextWidth - padding, 800 - fontSize - padding, fontSize, GREEN);
-        DrawFPS(900, 10);
     EndDrawing();
 }
 
